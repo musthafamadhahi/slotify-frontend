@@ -15,6 +15,7 @@ import MembersPage from './Pages/MembersPage';
 import SettingsPage from './Pages/SettingsPage';
 import LoginPage from './Pages/Login';
 import RegisterPage from './Pages/RegisterPage';
+import LandingPage from './Pages/LandingPage';
 
 function App() {
   // const { userType } = useAuth();
@@ -22,7 +23,7 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />

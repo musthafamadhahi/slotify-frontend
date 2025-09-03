@@ -15,7 +15,7 @@ import { auth } from '@/config/Firebase';
 import { Input } from '@/components/ui/input';
 import type { AppDispatch, RootState } from '@/redux/store/store';
 
-export default function LoginPage() {
+export default function Login() {
   const navigate = useNavigate();
 
   const dispatch = useDispatch<AppDispatch>();
