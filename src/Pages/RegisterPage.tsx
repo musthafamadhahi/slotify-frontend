@@ -14,43 +14,150 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '@/redux/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '@/redux/store/store';
 import { login } from '@/redux/features/authSlice';
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  type UserCredential,
+} from 'firebase/auth';
+import { toast } from 'sonner';
+import { FirebaseError } from 'firebase/app';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
-  //   const { loading, message } = useSelector((state: RootState) => state.auth);
+  const { loading } = useSelector((state: RootState) => state.auth);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleGoogleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const auth = getAuth();
+      const provider = new GoogleAuthProvider();
+      const result: UserCredential = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const idToken = await user.getIdToken();
+
+      // Dispatch to backend like email/password login
+      // const payload =
+      await dispatch(
+        login({ email: user.email!, idToken, name: user.displayName ?? '' })
+      ).unwrap();
+
+      toast.success('Google Sign-In Successful', {
+        className: 'bg-green-500 text-white',
+        description: `Welcome, ${user.displayName || 'User'}!`,
+      });
+
+      // Navigate based on userType
+      // switch (payload.user.userType) {
+      //   case 'admin':
+      //     navigate('/admin/dashboard');
+      //     break;
+      //   case 'provider':
+      //     navigate('/provider/home');
+      //     break;
+      //   default:
+      //     navigate('/dashboard');
+      // }
+
+      navigate('/dashboard');
+    } catch (error: unknown) {
+      let errorMessage = 'An unexpected error occurred';
+
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/popup-closed-by-user':
+            errorMessage = 'Popup closed before completing sign-in.';
+            break;
+          case 'auth/cancelled-popup-request':
+            errorMessage = 'Another popup is already open.';
+            break;
+          default:
+            errorMessage = 'Google sign-in failed. Please try again.';
+        }
+      }
+
+      toast.error('Google Sign-In Failed', {
+        className: 'bg-red-500 text-white',
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const auth = getAuth();
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    const idToken = await userCredential.user.getIdToken();
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match', {
+        className: 'bg-red-500 text-white',
+        description: 'Please ensure both passwords match.',
+      });
+      return;
+    }
 
-    const payload = await dispatch(
-      login({ email, idToken, phoneNumber })
-    ).unwrap();
+    try {
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const idToken = await userCredential.user.getIdToken();
 
-    console.log(payload);
-    navigate('/dashboard');
+      const payload = await dispatch(
+        login({ email, name, idToken, phoneNumber })
+      ).unwrap();
+
+      console.log(payload);
+      navigate('/dashboard');
+    } catch (error: unknown) {
+      console.error(error);
+      let errorMessage = 'An unexpected error occurred';
+
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = 'An account already exists with this email.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'The email address is not valid.';
+            break;
+          case 'auth/weak-password':
+            errorMessage = 'Password should be at least 6 characters.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Check your internet connection.';
+            break;
+          default:
+            errorMessage = 'Registration failed. Please try again.';
+        }
+      }
+
+      toast.error('Registration Failed', {
+        className: 'bg-red-500 text-white',
+        description: errorMessage,
+      });
+    }
   };
 
   return (
@@ -68,7 +175,7 @@ export default function RegisterPage() {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-              Welcome to Slottify
+              Welcome to Slotify
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-300">
               Sign in to book your favorite sports facilities
@@ -78,6 +185,20 @@ export default function RegisterPage() {
 
         <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">
+                Name *
+              </Label>
+              <Input
+                id="name"
+                placeholder="Enter your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-11"
+                required
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">
                 Email Address
@@ -153,6 +274,9 @@ export default function RegisterPage() {
                   )}
                 </Button>
               </div>
+              {password && confirmPassword && password !== confirmPassword && (
+                <p className="text-sm text-red-600">Passwords do not match.</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -173,26 +297,10 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember" />
-                <Label
-                  htmlFor="remember"
-                  className="text-sm text-gray-600 dark:text-gray-300"
-                >
-                  Remember me
-                </Label>
-              </div>
-              <button
-                type="button"
-                className="cursor-pointer text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400"
-              >
-                Forgot password?
-              </button>
-            </div>
-
             <Button
               type="submit"
+              isLoading={loading}
+              disabled={isLoading || loading}
               className="w-full h-11 bg-blue-600 hover:bg-blue-700"
             >
               Sign Up
@@ -210,7 +318,13 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <Button variant="outline" className="h-11 w-full">
+          <Button
+            onClick={handleGoogleSignIn}
+            isLoading={isLoading}
+            disabled={isLoading || loading}
+            variant="outline"
+            className="h-11 w-full"
+          >
             <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
               <path
                 fill="currentColor"

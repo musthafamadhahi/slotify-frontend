@@ -16,6 +16,7 @@ import SettingsPage from './Pages/SettingsPage';
 import LoginPage from './Pages/Login';
 import RegisterPage from './Pages/RegisterPage';
 import LandingPage from './Pages/LandingPage';
+import { ProtectedRoute } from './config/ProtectedRoutes';
 
 function App() {
   // const { userType } = useAuth();
@@ -26,15 +27,18 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/facilities" element={<FacilitiesPage />} />
-      <Route path="/reservations" element={<ReservationsPage />} />
-      <Route path="/schedule" element={<SchedulePage />} />
-      <Route path="/analytics" element={<AnalyticsPage />} />
-      <Route path="/members" element={<MembersPage />} />
-      <Route path="/payments" element={<PaymentsPage />} />
-      <Route path="/notifications" element={<NotificationsPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
+
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/facilities" element={<FacilitiesPage />} />
+        <Route path="/reservations" element={<ReservationsPage />} />
+        <Route path="/schedule" element={<SchedulePage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/members" element={<MembersPage />} />
+        <Route path="/payments" element={<PaymentsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
     </Routes>
   );
   return (

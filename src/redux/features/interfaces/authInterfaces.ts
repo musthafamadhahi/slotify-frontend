@@ -4,11 +4,13 @@ export interface User {
   firebaseUid?: string;
   address?: string;
   phoneNumber?: string;
+  userType?: string;
 }
 
 export interface LoginCredentials {
   email: string;
   idToken: string;
+  name?: string;
   password?: string;
   role?: string;
   phoneNumber?: string;

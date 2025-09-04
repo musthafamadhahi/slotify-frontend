@@ -37,6 +37,10 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { ThemeToggle } from './ThemeToggle';
+import { toast } from 'sonner';
+import { auth } from '@/config/Firebase';
+import { signOut } from '@firebase/auth';
+import { useAuth } from '@/config/AuthContext';
 
 const navigationItems = [
   {
@@ -96,12 +100,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { user } = useAuth();
+
   const handleNavigation = (url: string) => {
     navigate(url);
   };
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast.error('Logout failed', {
+        description: 'Please try again later.',
+      });
+    }
   };
 
   return (
@@ -118,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Dumbbell className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Slottify</span>
+                  <span className="font-semibold">Slotify</span>
                   <span className="text-xs">Reservation Platform</span>
                 </div>
               </SidebarMenuButton>
@@ -206,8 +220,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">John Doe</span>
-                    <span className="truncate text-xs">john@example.com</span>
+                    <span className="truncate font-semibold">
+                      {user?.displayName}
+                    </span>
+                    <span className="truncate text-xs">{user?.email}</span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>

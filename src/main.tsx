@@ -17,7 +17,7 @@ setTokenGetter(async () => {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <AuthProvider>
-    <ThemeProvider defaultTheme="system" storageKey="slottify-theme">
+    <ThemeProvider defaultTheme="system" storageKey="Slotify-theme">
       <Provider store={appStore}>
         <BrowserRouter>
           <App />

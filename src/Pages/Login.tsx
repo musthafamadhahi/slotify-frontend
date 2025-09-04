@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,27 +16,92 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '@/redux/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '@/redux/store/store';
 import { login } from '@/redux/features/authSlice';
 import { toast } from 'sonner';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  type UserCredential,
+} from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
-  // const { loading, message } = useSelector((state: RootState) => state.auth);
+  const { loading } = useSelector((state: RootState) => state.auth);
 
   const [showPassword, setShowPassword] = useState(false);
-  // const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const handleGoogleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const auth = getAuth();
+      const provider = new GoogleAuthProvider();
+      const result: UserCredential = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const idToken = await user.getIdToken();
+
+      // Dispatch to backend like email/password login
+      // const payload =
+      await dispatch(
+        login({ email: user.email!, idToken, name: user.displayName ?? '' })
+      ).unwrap();
+
+      toast.success('Google Sign-In Successful', {
+        className: 'bg-green-500 text-white',
+        description: `Welcome, ${user.displayName || 'User'}!`,
+      });
+
+      // Navigate based on userType
+      // switch (payload.user.userType) {
+      //   case 'admin':
+      //     navigate('/admin/dashboard');
+      //     break;
+      //   case 'provider':
+      //     navigate('/provider/home');
+      //     break;
+      //   default:
+      //     navigate('/dashboard');
+      // }
+
+      navigate('/dashboard');
+    } catch (error: unknown) {
+      let errorMessage = 'An unexpected error occurred';
+
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/popup-closed-by-user':
+            errorMessage = 'Popup closed before completing sign-in.';
+            break;
+          case 'auth/cancelled-popup-request':
+            errorMessage = 'Another popup is already open.';
+            break;
+          default:
+            errorMessage = 'Google sign-in failed. Please try again.';
+        }
+      }
+
+      toast.error('Google Sign-In Failed', {
+        className: 'bg-red-500 text-white',
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // setIsLoading(true);
 
     try {
       const auth = getAuth();
@@ -80,8 +145,6 @@ export default function LoginPage() {
         className: 'bg-red-500 text-white',
         description: errorMessage,
       });
-    } finally {
-      // setIsLoading(false);
     }
   };
 
@@ -100,7 +163,7 @@ export default function LoginPage() {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-              Welcome to Slottify
+              Welcome to Slotify
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-300">
               Sign in to book your favorite sports facilities
@@ -134,6 +197,7 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-11 pr-10"
@@ -174,6 +238,8 @@ export default function LoginPage() {
             </div>
 
             <Button
+              disabled={isLoading || loading}
+              isLoading={loading}
               type="submit"
               className="w-full h-11 bg-blue-600 hover:bg-blue-700"
             >
@@ -192,7 +258,13 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button variant="outline" className="h-11 w-full">
+          <Button
+            onClick={handleGoogleSignIn}
+            variant="outline"
+            className="h-11 w-full"
+            disabled={isLoading || loading}
+            isLoading={isLoading}
+          >
             <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
@@ -218,12 +290,12 @@ export default function LoginPage() {
         <CardFooter className="text-center">
           <p className="text-sm text-gray-600 dark:text-gray-300">
             {"Don't have an account? "}
-            <button
-              onClick={() => navigate('/register')}
+            <Link
               className="cursor-pointer text-blue-600 hover:text-blue-500 dark:text-blue-400 font-medium"
+              to="/register"
             >
               Sign up
-            </button>
+            </Link>
           </p>
         </CardFooter>
       </Card>
